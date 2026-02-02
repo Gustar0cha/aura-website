@@ -113,8 +113,8 @@ export default function MemberCardPage() {
     }
   }
 
-  const handleShareCard = (cardId: string, fileName: string) => {
-    shareCard(cardId, fileName)
+  const handleShareCard = (frontId: string, backId: string, fileName: string) => {
+    shareCard(frontId, backId, fileName)
   }
 
   // Loading state - Mobile optimized
@@ -319,7 +319,7 @@ export default function MemberCardPage() {
                   variant="outline"
                   className="bg-white/50 hover:bg-white border-2 border-emerald-200 hover:border-emerald-400 text-emerald-700 shadow-sm hover:shadow-md transition-all min-h-[48px]"
                   size="lg"
-                  onClick={() => handleShareCard('download-card-front', `carteira-${cardData.nome.replace(/\s/g, '-')}`)}
+                  onClick={() => handleShareCard('download-card-front', 'download-card-back', `carteira-${cardData.nome.replace(/\s/g, '-')}`)}
                 >
                   <Share2 className="mr-2 h-4 w-4" />
                   Compartilhar
@@ -412,7 +412,7 @@ export default function MemberCardPage() {
                         <Button
                           variant="outline"
                           className="bg-white hover:bg-slate-50 text-foreground border-slate-200 min-h-[44px]"
-                          onClick={() => handleShareCard(`download-dep-card-front-${index}`, `carteira-${dependente.nome.replace(/\s/g, '-')}`)}
+                          onClick={() => handleShareCard(`download-dep-card-front-${index}`, `download-dep-card-back-${index}`, `carteira-${dependente.nome.replace(/\s/g, '-')}`)}
                         >
                           <Share2 className="mr-2 h-4 w-4" />
                           Compartilhar
@@ -531,7 +531,7 @@ export default function MemberCardPage() {
           <Button
             variant="outline"
             className="border-2 border-emerald-300 text-emerald-700 min-h-[52px] text-base font-semibold active:scale-[0.98] transition-transform"
-            onClick={() => handleShareCard('download-card-front', `carteira-${cardData.nome.replace(/\s/g, '-')}`)}
+            onClick={() => handleShareCard('download-card-front', 'download-card-back', `carteira-${cardData.nome.replace(/\s/g, '-')}`)}
           >
             <Share2 className="mr-2 h-5 w-5" />
             Compartilhar

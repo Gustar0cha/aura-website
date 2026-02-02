@@ -87,45 +87,75 @@ export async function downloadCardAsPDF(frontId: string, backId: string, fileNam
     document.body.style.cursor = originalCursor
 }
 
-export async function shareCard(elementId: string, fileName: string) {
-    const element = document.getElementById(elementId)
-    if (!element) {
-        console.error('Elemento não encontrado')
+export async function shareCard(frontId: string, backId: string, fileName: string) {
+    const frontElement = document.getElementById(frontId)
+    const backElement = document.getElementById(backId)
+
+    if (!frontElement || !backElement) {
+        alert('Erro: Elementos da carteira não encontrados')
         return
     }
 
     try {
-        // Captura a imagem
-        const dataUrl = await htmlToImage.toPng(element, {
+        // Captura as imagens
+        const frontImgData = await htmlToImage.toPng(frontElement, {
             quality: 1,
             pixelRatio: 3,
             backgroundColor: '#ffffff',
         })
 
-        // Converte para blob
-        const response = await fetch(dataUrl)
-        const blob = await response.blob()
+        const backImgData = await htmlToImage.toPng(backElement, {
+            quality: 1,
+            pixelRatio: 3,
+            backgroundColor: '#ffffff',
+        })
+
+        // Cria o PDF
+        const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+        })
+
+        const pageWidth = 297
+        const pageHeight = 210
+        const cardWidth = 170
+        const cardHeight = cardWidth * (53.98 / 85.6)
+        const x = (pageWidth - cardWidth) / 2
+        const y = (pageHeight - cardHeight) / 2
+
+        pdf.setFontSize(16)
+        pdf.setTextColor(51, 51, 51)
+        pdf.text('FRENTE DA CARTEIRA', pageWidth / 2, 20, { align: 'center' })
+        pdf.addImage(frontImgData, 'PNG', x, y - 10, cardWidth, cardHeight)
+
+        pdf.addPage()
+        pdf.text('VERSO DA CARTEIRA', pageWidth / 2, 20, { align: 'center' })
+        pdf.addImage(backImgData, 'PNG', x, y - 10, cardWidth, cardHeight)
+
+        // Converte PDF para blob
+        const pdfBlob = pdf.output('blob')
+        const pdfFile = new File([pdfBlob], `${fileName}.pdf`, { type: 'application/pdf' })
 
         // Tenta usar Web Share API
-        if (navigator.share && navigator.canShare) {
-            const file = new File([blob], `${fileName}.png`, { type: 'image/png' })
-
-            if (navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({
-                        files: [file],
-                        title: 'Minha Carteira AURA',
-                        text: 'Confira minha carteira de associado AURA',
-                    })
-                    return
-                } catch (error) {
-                    console.log('Compartilhamento cancelado ou falhou')
-                }
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+            try {
+                await navigator.share({
+                    files: [pdfFile],
+                    title: 'Minha Carteira AURA',
+                    text: 'Confira minha carteira de associado AURA',
+                })
+                return
+            } catch (error) {
+                console.log('Compartilhamento cancelado')
             }
         }
 
-        // Fallback: abre WhatsApp
-        window.open(`https://wa.me/?text=Confira minha carteira AURA`, '_blank')
+        // Fallback: baixa o PDF e abre WhatsApp
+        pdf.save(`${fileName}.pdf`)
+        setTimeout(() => {
+            window.open(`https://wa.me/?text=Confira minha carteira AURA! Acabei de baixar o PDF.`, '_blank')
+        }, 1000)
 
     } catch (error) {
         console.error('Erro ao compartilhar:', error)
