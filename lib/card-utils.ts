@@ -2,153 +2,142 @@
 
 import * as htmlToImage from 'html-to-image'
 
-export async function downloadCardAsPDF(frontId: string, backId: string, fileName: string) {
-    // 1. Abre a janela IMEDIATAMENTE para evitar bloqueio de pop-up
-    const printWindow = window.open('', '_blank', 'width=800,height=600')
+// Detecta se está em mobile
+function isMobile(): boolean {
+    if (typeof window === 'undefined') return false
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
 
-    if (!printWindow) {
-        alert('Por favor, permita pop-ups para baixar o PDF')
+// Download direto de imagem (mobile-friendly)
+async function downloadImage(dataUrl: string, fileName: string) {
+    const link = document.createElement('a')
+    link.download = fileName
+    link.href = dataUrl
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+}
+
+export async function downloadCardAsPDF(frontId: string, backId: string, fileName: string) {
+    const frontElement = document.getElementById(frontId)
+    const backElement = document.getElementById(backId)
+
+    if (!frontElement || !backElement) {
+        alert('Erro: Elementos da carteira não encontrados')
         return
     }
 
+    // Mostra loading
+    const originalCursor = document.body.style.cursor
+    document.body.style.cursor = 'wait'
+
     try {
-        // Feedback na janela enquanto processa
-        printWindow.document.write(`
-            <html>
-                <head><title>Gerando PDF...</title></head>
-                <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f0f4f8;">
-                    <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); text-align: center;">
-                        <h1 style="color: #1e293b; margin-bottom: 16px;">🎴 Gerando sua carteira...</h1>
-                        <p style="color: #64748b;">Por favor aguarde um momento.</p>
-                        <div style="margin-top: 24px; width: 200px; height: 4px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                            <div style="width: 30%; height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); animation: loading 1.5s ease-in-out infinite;"></div>
-                        </div>
-                    </div>
-                    <style>
-                        @keyframes loading {
-                            0% { transform: translateX(-100%); }
-                            100% { transform: translateX(400%); }
-                        }
-                    </style>
-                </body>
-            </html>
-        `)
+        // Captura as imagens
+        const frontImgData = await htmlToImage.toPng(frontElement, {
+            quality: 1,
+            pixelRatio: 3,
+            backgroundColor: '#ffffff',
+        })
 
-        // Aguarda renderização
-        await new Promise(resolve => setTimeout(resolve, 300))
+        const backImgData = await htmlToImage.toPng(backElement, {
+            quality: 1,
+            pixelRatio: 3,
+            backgroundColor: '#ffffff',
+        })
 
-        const frontElement = document.getElementById(frontId)
-        const backElement = document.getElementById(backId)
+        // MOBILE: Download direto das imagens
+        if (isMobile()) {
+            // Tenta usar Web Share API se disponível
+            if (navigator.share && navigator.canShare) {
+                try {
+                    const frontBlob = await (await fetch(frontImgData)).blob()
+                    const backBlob = await (await fetch(backImgData)).blob()
 
-        if (!frontElement || !backElement) {
-            printWindow.close()
-            alert('Erro: Elementos da carteira não encontrados (' + frontId + ', ' + backId + ')')
+                    const frontFile = new File([frontBlob], `${fileName}-frente.png`, { type: 'image/png' })
+                    const backFile = new File([backBlob], `${fileName}-verso.png`, { type: 'image/png' })
+
+                    if (navigator.canShare({ files: [frontFile, backFile] })) {
+                        await navigator.share({
+                            files: [frontFile, backFile],
+                            title: 'Carteira AURA',
+                            text: 'Minha carteira de associado AURA (frente e verso)',
+                        })
+                        document.body.style.cursor = originalCursor
+                        return
+                    }
+                } catch (shareError) {
+                    console.log('Share API falhou, usando download direto')
+                }
+            }
+
+            // Fallback: Download direto das imagens
+            await downloadImage(frontImgData, `${fileName}-frente.png`)
+            await new Promise(resolve => setTimeout(resolve, 500))
+            await downloadImage(backImgData, `${fileName}-verso.png`)
+
+            alert('✅ Imagens salvas! Verifique sua pasta de Downloads.')
+            document.body.style.cursor = originalCursor
             return
         }
 
-        // Mostra feedback no cursor principal
-        const originalCursor = document.body.style.cursor
-        document.body.style.cursor = 'wait'
+        // DESKTOP: Abre janela de impressão/PDF
+        const printWindow = window.open('', '_blank', 'width=800,height=600')
 
-        try {
-            // Captura as imagens usando html-to-image (melhor suporte CSS moderno)
-            const frontImgData = await htmlToImage.toPng(frontElement, {
-                quality: 1,
-                pixelRatio: 3,
-                backgroundColor: '#ffffff',
-            })
-
-            const backImgData = await htmlToImage.toPng(backElement, {
-                quality: 1,
-                pixelRatio: 3,
-                backgroundColor: '#ffffff',
-            })
-
-            // Monta o HTML final para impressão
-            printWindow.document.open()
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>${fileName}</title>
-                    <style>
-                        @page {
-                            size: A4 landscape;
-                            margin: 0;
-                        }
-                        body {
-                            margin: 0;
-                            padding: 0;
-                            background: #f0f0f0;
-                            font-family: Arial, sans-serif;
-                        }
-                        .page {
-                            width: 100vw;
-                            height: 100vh;
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            justify-content: center;
-                            page-break-after: always;
-                            background: white;
-                        }
-                        .page:last-child {
-                            page-break-after: auto;
-                        }
-                        .card-label {
-                            font-size: 24px;
-                            font-weight: bold;
-                            color: #333;
-                            margin-bottom: 20px;
-                            text-transform: uppercase;
-                        }
-                        img {
-                            max-width: 90%;
-                            max-height: 80vh;
-                            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-                            border-radius: 12px;
-                        }
-                        @media print {
-                            body { background: white; }
-                            img { box-shadow: none; border: 1px solid #ddd; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="page">
-                        <div class="card-label">Frente da Carteira</div>
-                        <img src="${frontImgData}" alt="Frente" />
-                    </div>
-                    <div class="page">
-                        <div class="card-label">Verso da Carteira</div>
-                        <img src="${backImgData}" alt="Verso" />
-                    </div>
-                    <script>
-                        window.onload = function() {
-                            setTimeout(function() {
-                                window.print();
-                            }, 500);
-                        }
-                    </script>
-                </body>
-                </html>
-            `)
-            printWindow.document.close()
-
-        } catch (captureError) {
-            console.error('Erro ao capturar imagens:', captureError)
-            printWindow.close()
-            alert('Erro ao capturar carteira. Tente atualizar a página e tentar novamente.')
+        if (!printWindow) {
+            // Fallback para download direto se popup bloqueado
+            await downloadImage(frontImgData, `${fileName}-frente.png`)
+            await downloadImage(backImgData, `${fileName}-verso.png`)
+            alert('Pop-up bloqueado. Imagens salvas como PNG.')
+            document.body.style.cursor = originalCursor
+            return
         }
 
-        document.body.style.cursor = originalCursor
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${fileName}</title>
+                <style>
+                    @page { size: A4 landscape; margin: 0; }
+                    body { margin: 0; padding: 0; background: #f0f0f0; font-family: Arial, sans-serif; }
+                    .page {
+                        width: 100vw; height: 100vh;
+                        display: flex; flex-direction: column;
+                        align-items: center; justify-content: center;
+                        page-break-after: always; background: white;
+                    }
+                    .page:last-child { page-break-after: auto; }
+                    .card-label { font-size: 24px; font-weight: bold; color: #333; margin-bottom: 20px; text-transform: uppercase; }
+                    img { max-width: 90%; max-height: 80vh; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 12px; }
+                    @media print { body { background: white; } img { box-shadow: none; border: 1px solid #ddd; } }
+                </style>
+            </head>
+            <body>
+                <div class="page">
+                    <div class="card-label">Frente da Carteira</div>
+                    <img src="${frontImgData}" alt="Frente" />
+                </div>
+                <div class="page">
+                    <div class="card-label">Verso da Carteira</div>
+                    <img src="${backImgData}" alt="Verso" />
+                </div>
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() { window.print(); }, 500);
+                    }
+                </script>
+            </body>
+            </html>
+        `)
+        printWindow.document.close()
 
     } catch (error) {
-        printWindow.close()
-        console.error('Erro ao gerar PDF:', error)
-        alert('Erro ao gerar PDF. Por favor, tente novamente.')
-        document.body.style.cursor = 'default'
+        console.error('Erro ao gerar carteira:', error)
+        alert('Erro ao gerar carteira. Tente novamente.')
     }
+
+    document.body.style.cursor = originalCursor
 }
 
 export async function shareCard(elementId: string, fileName: string) {
