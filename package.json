@@ -47,6 +47,8 @@
     "geist": "latest",
     "google-auth-library": "^10.4.1",
     "googleapis": "^163.0.0",
+    "html-to-image": "^1.11.13",
+    "html2canvas": "^1.4.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
