@@ -1,22 +1,12 @@
 'use client'
 
 import * as htmlToImage from 'html-to-image'
+import { jsPDF } from 'jspdf'
 
 // Detecta se está em mobile
 function isMobile(): boolean {
     if (typeof window === 'undefined') return false
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-}
-
-// Download direto de imagem (mobile-friendly)
-async function downloadImage(dataUrl: string, fileName: string) {
-    const link = document.createElement('a')
-    link.download = fileName
-    link.href = dataUrl
-    link.style.display = 'none'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
 }
 
 export async function downloadCardAsPDF(frontId: string, backId: string, fileName: string) {
@@ -33,7 +23,10 @@ export async function downloadCardAsPDF(frontId: string, backId: string, fileNam
     document.body.style.cursor = 'wait'
 
     try {
-        // Captura as imagens
+        // Aguarda um pouco para garantir que os elementos estejam renderizados
+        await new Promise(resolve => setTimeout(resolve, 300))
+
+        // Captura as imagens em alta qualidade
         const frontImgData = await htmlToImage.toPng(frontElement, {
             quality: 1,
             pixelRatio: 3,
@@ -46,95 +39,49 @@ export async function downloadCardAsPDF(frontId: string, backId: string, fileNam
             backgroundColor: '#ffffff',
         })
 
-        // MOBILE: Download direto das imagens
+        // Cria o PDF usando jsPDF
+        const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+        })
+
+        // Dimensões do A4 landscape
+        const pageWidth = 297
+        const pageHeight = 210
+
+        // Calcula dimensões proporcionais da carteira (85.6mm x 53.98mm - tamanho padrão cartão)
+        const cardWidth = 170 // mm
+        const cardHeight = cardWidth * (53.98 / 85.6) // mantém proporção
+
+        // Centraliza na página
+        const x = (pageWidth - cardWidth) / 2
+        const y = (pageHeight - cardHeight) / 2
+
+        // Adiciona título e imagem da frente
+        pdf.setFontSize(16)
+        pdf.setTextColor(51, 51, 51)
+        pdf.text('FRENTE DA CARTEIRA', pageWidth / 2, 20, { align: 'center' })
+        pdf.addImage(frontImgData, 'PNG', x, y - 10, cardWidth, cardHeight)
+
+        // Nova página para o verso
+        pdf.addPage()
+        pdf.text('VERSO DA CARTEIRA', pageWidth / 2, 20, { align: 'center' })
+        pdf.addImage(backImgData, 'PNG', x, y - 10, cardWidth, cardHeight)
+
+        // Salva o PDF
+        pdf.save(`${fileName}.pdf`)
+
+        // Em mobile, feedback extra
         if (isMobile()) {
-            // Tenta usar Web Share API se disponível
-            if (navigator.share && navigator.canShare) {
-                try {
-                    const frontBlob = await (await fetch(frontImgData)).blob()
-                    const backBlob = await (await fetch(backImgData)).blob()
-
-                    const frontFile = new File([frontBlob], `${fileName}-frente.png`, { type: 'image/png' })
-                    const backFile = new File([backBlob], `${fileName}-verso.png`, { type: 'image/png' })
-
-                    if (navigator.canShare({ files: [frontFile, backFile] })) {
-                        await navigator.share({
-                            files: [frontFile, backFile],
-                            title: 'Carteira AURA',
-                            text: 'Minha carteira de associado AURA (frente e verso)',
-                        })
-                        document.body.style.cursor = originalCursor
-                        return
-                    }
-                } catch (shareError) {
-                    console.log('Share API falhou, usando download direto')
-                }
-            }
-
-            // Fallback: Download direto das imagens
-            await downloadImage(frontImgData, `${fileName}-frente.png`)
-            await new Promise(resolve => setTimeout(resolve, 500))
-            await downloadImage(backImgData, `${fileName}-verso.png`)
-
-            alert('✅ Imagens salvas! Verifique sua pasta de Downloads.')
-            document.body.style.cursor = originalCursor
-            return
+            setTimeout(() => {
+                alert('✅ PDF salvo! Verifique sua pasta de Downloads.')
+            }, 500)
         }
-
-        // DESKTOP: Abre janela de impressão/PDF
-        const printWindow = window.open('', '_blank', 'width=800,height=600')
-
-        if (!printWindow) {
-            // Fallback para download direto se popup bloqueado
-            await downloadImage(frontImgData, `${fileName}-frente.png`)
-            await downloadImage(backImgData, `${fileName}-verso.png`)
-            alert('Pop-up bloqueado. Imagens salvas como PNG.')
-            document.body.style.cursor = originalCursor
-            return
-        }
-
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>${fileName}</title>
-                <style>
-                    @page { size: A4 landscape; margin: 0; }
-                    body { margin: 0; padding: 0; background: #f0f0f0; font-family: Arial, sans-serif; }
-                    .page {
-                        width: 100vw; height: 100vh;
-                        display: flex; flex-direction: column;
-                        align-items: center; justify-content: center;
-                        page-break-after: always; background: white;
-                    }
-                    .page:last-child { page-break-after: auto; }
-                    .card-label { font-size: 24px; font-weight: bold; color: #333; margin-bottom: 20px; text-transform: uppercase; }
-                    img { max-width: 90%; max-height: 80vh; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 12px; }
-                    @media print { body { background: white; } img { box-shadow: none; border: 1px solid #ddd; } }
-                </style>
-            </head>
-            <body>
-                <div class="page">
-                    <div class="card-label">Frente da Carteira</div>
-                    <img src="${frontImgData}" alt="Frente" />
-                </div>
-                <div class="page">
-                    <div class="card-label">Verso da Carteira</div>
-                    <img src="${backImgData}" alt="Verso" />
-                </div>
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() { window.print(); }, 500);
-                    }
-                </script>
-            </body>
-            </html>
-        `)
-        printWindow.document.close()
 
     } catch (error) {
-        console.error('Erro ao gerar carteira:', error)
-        alert('Erro ao gerar carteira. Tente novamente.')
+        console.error('Erro ao gerar PDF:', error)
+        alert('Erro ao gerar PDF. Tente novamente.')
     }
 
     document.body.style.cursor = originalCursor
@@ -148,32 +95,41 @@ export async function shareCard(elementId: string, fileName: string) {
     }
 
     try {
+        // Captura a imagem
         const dataUrl = await htmlToImage.toPng(element, {
             quality: 1,
             pixelRatio: 3,
+            backgroundColor: '#ffffff',
         })
 
-        // Converte data URL para blob
+        // Converte para blob
         const response = await fetch(dataUrl)
         const blob = await response.blob()
-        const file = new File([blob], `${fileName}.png`, { type: 'image/png' })
 
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({
-                    files: [file],
-                    title: 'Minha Carteira AURA',
-                    text: 'Confira minha carteira de associado AURA',
-                })
-            } catch (error) {
-                console.error('Erro ao compartilhar:', error)
+        // Tenta usar Web Share API
+        if (navigator.share && navigator.canShare) {
+            const file = new File([blob], `${fileName}.png`, { type: 'image/png' })
+
+            if (navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Minha Carteira AURA',
+                        text: 'Confira minha carteira de associado AURA',
+                    })
+                    return
+                } catch (error) {
+                    console.log('Compartilhamento cancelado ou falhou')
+                }
             }
-        } else {
-            // Fallback para WhatsApp Web
-            window.open(`https://wa.me/?text=Confira minha carteira AURA`, '_blank')
         }
+
+        // Fallback: abre WhatsApp
+        window.open(`https://wa.me/?text=Confira minha carteira AURA`, '_blank')
+
     } catch (error) {
         console.error('Erro ao compartilhar:', error)
+        alert('Erro ao compartilhar. Tente novamente.')
     }
 }
 
