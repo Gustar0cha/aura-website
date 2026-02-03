@@ -40,13 +40,13 @@ export function DependentCard({ nome, cpf, registro, titularNome, className = ''
                 </defs>
             </svg>
 
-            {/* Conteúdo Dinâmico Sobreposto */}
-            <div className="absolute inset-0 flex flex-col justify-between p-6 md:p-8">
+            {/* Conteúdo Dinâmico Sobreposto - Compacto para mobile */}
+            <div className="absolute inset-0 flex flex-col justify-between p-3 sm:p-4 md:p-6">
                 {/* Header */}
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h2 className="text-[#DD9AC3] text-lg md:text-xl font-bold mb-0.5">CARTEIRA DO ASSOCIADO</h2>
-                        <p className="text-[#333] text-[10px] md:text-xs leading-tight max-w-[200px]">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-[#DD9AC3] text-sm sm:text-base md:text-lg font-bold leading-tight">CARTEIRA DO ASSOCIADO</h2>
+                        <p className="text-[#333] text-[8px] sm:text-[9px] md:text-[10px] leading-tight mt-0.5">
                             ASSOCIAÇÃO DOS EMPREGADOS DA UNIDADE<br />
                             DE CONCETRADO DE URÂNIO DE CAETITÉ
                         </p>
@@ -54,13 +54,13 @@ export function DependentCard({ nome, cpf, registro, titularNome, className = ''
                     <img
                         src="/logo aura.png"
                         alt="AURA Logo"
-                        className="h-10 md:h-12 w-auto object-contain"
+                        className="h-7 sm:h-8 md:h-10 w-auto object-contain flex-shrink-0"
                     />
                 </div>
 
                 {/* Footer */}
                 <div className="text-center">
-                    <p className="text-white text-sm md:text-base font-bold tracking-wider drop-shadow-md">
+                    <p className="text-white text-xs sm:text-sm md:text-base font-bold tracking-wider drop-shadow-md">
                         REGISTRO Nº : {registro}
                     </p>
                 </div>
@@ -107,39 +107,37 @@ export function DependentCardBack({ nome, cpf, titularNome, className = '' }: Om
                 </defs>
             </svg>
 
-            {/* Conteúdo do Verso */}
-            <div className="absolute inset-0 flex flex-col justify-between p-6 md:p-8">
+            {/* Conteúdo do Verso - Compacto para mobile */}
+            <div className="absolute inset-0 flex flex-col p-3 sm:p-4 md:p-6">
                 {/* Header com Logo */}
-                <div className="flex justify-end">
+                <div className="flex justify-end mb-1">
                     <img
                         src="/logo aura.png"
                         alt="AURA Logo"
-                        className="h-10 md:h-12 w-auto object-contain"
+                        className="h-6 sm:h-7 md:h-10 w-auto object-contain"
                     />
                 </div>
 
                 {/* Informações Centrais */}
-                <div className="flex-1 flex flex-col justify-center space-y-3 text-[#333]">
-                    <div>
-                        <p className="text-xs md:text-sm font-bold">DEPENDENTE: {nome.toUpperCase()}</p>
-                        <p className="text-xs md:text-sm font-bold">CPF: {formatCPF(cpf)}</p>
-                        <p className="text-xs md:text-sm font-bold text-[#333] mt-1">
-                            Titular: {titularNome.toUpperCase()}
-                        </p>
+                <div className="flex-1 flex flex-col justify-center text-[#333]">
+                    <div className="space-y-0.5 mb-2">
+                        <p className="text-[10px] sm:text-xs md:text-sm font-bold leading-tight">DEPENDENTE: {nome.toUpperCase()}</p>
+                        <p className="text-[10px] sm:text-xs md:text-sm font-bold leading-tight">CPF: {formatCPF(cpf)}</p>
+                        <p className="text-[10px] sm:text-xs md:text-sm font-bold leading-tight">Titular: {titularNome.toUpperCase()}</p>
                     </div>
 
-                    <div className="text-[10px] md:text-xs leading-relaxed space-y-1 bg-white/60 p-3 rounded-lg">
+                    <div className="text-[8px] sm:text-[9px] md:text-[10px] leading-snug space-y-0.5 bg-white/60 p-2 sm:p-2.5 rounded-lg">
                         <p className="font-semibold">Este cartão é pessoal e intransferível.</p>
                         <p>Em caso de roubo ou extravio, favor comunicar imediatamente a associação pertencente.</p>
                         <p className="font-semibold text-green-700">O associado gozará dos benefícios de todos os parceiros vinculados à AURA.</p>
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="text-center">
-                    <p className="text-xs md:text-sm font-bold text-[#333] bg-[#BFDEB1] py-1 px-3 rounded-full inline-block">
+                {/* Footer - Compacto */}
+                <div className="text-center mt-1">
+                    <span className="text-[9px] sm:text-[10px] md:text-xs font-bold text-[#333] bg-[#BFDEB1] py-0.5 px-2 sm:py-1 sm:px-3 rounded-full inline-block">
                         Carimbo da AURA
-                    </p>
+                    </span>
                 </div>
             </div>
         </div>

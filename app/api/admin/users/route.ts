@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listUsers, createUser, findUserByCPF, updateUser } from '@/lib/google/sheets';
+import { listUsers, createUser, findUserByCPF } from '@/lib/google/sheets';
 
 export async function GET(request: Request) {
   try {
@@ -89,68 +89,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
-export async function PUT(request: Request) {
-  try {
-    // Verifica autenticação
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Token não fornecido' },
-        { status: 401 }
-      );
-    }
-
-    // Decodifica o token e verifica se é admin
-    const token = authHeader.replace('Bearer ', '');
-    const adminCpf = Buffer.from(token, 'base64').toString();
-
-    const adminUser = await findUserByCPF(adminCpf);
-    if (!adminUser || adminUser.tipo !== 'admin') {
-      return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 403 }
-      );
-    }
-
-    // Atualiza o usuário
-    const userData = await request.json();
-
-    if (!userData.cpf) {
-      return NextResponse.json(
-        { error: 'CPF é obrigatório' },
-        { status: 400 }
-      );
-    }
-
-    // Verifica se o usuário existe
-    const existingUser = await findUserByCPF(userData.cpf);
-    if (!existingUser) {
-      return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
-      );
-    }
-
-    const success = await updateUser(userData.cpf, {
-      nome: userData.nome,
-      status: userData.status,
-      isDependente: userData.isDependente,
-      titularCpf: userData.titularCpf,
-      dataValidade: userData.dataValidade,
-    });
-
-    if (!success) {
-      throw new Error('Falha ao atualizar usuário');
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Erro ao atualizar usuário:', error);
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    );
-  }
-}
-
